@@ -6,6 +6,7 @@ from yaml import safe_load
 move_speed = 0.5
 color_range = 10
 coin_radius = 10
+color_tolerance = 20
 
 home = [0,0,0,0,0,0]
 slots = []
@@ -33,9 +34,9 @@ def getBoardState(img, calib_data):
     for L in calib_data["coins"]:
         tk = token_color(img, L["x"]), L["y"])
 
-        if dist(tk, player):
+        if dist(tk, player) < color_tolerance:
             state.append(2)
-        elif dist(tk, robot):
+        elif dist(tk, robot) < color_tolerance:
             state.append(1)
         else:
             state.append(0)
