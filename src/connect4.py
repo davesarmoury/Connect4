@@ -2,11 +2,15 @@ import numpy as np
 import cv2 as cv2
 import math
 from yaml import safe_load
+import numpy as np
+import sys
+sys.path.insert(0, 'Connect-Four-AI/Connect-Four')
+from connect_four import Board, Game
 
 move_speed = 0.5
 color_range = 10
 coin_radius = 10
-color_tolerance = 20
+color_tolerance = 40
 
 home = [0,0,0,0,0,0]
 slots = []
@@ -26,34 +30,38 @@ def token_color(img, x, y):
     return np.average(np.average(crop, axis=0), axis=0)
 
 def getBoardState(img, calib_data):
-    state = []
+    state = np.zeros((7, 6))
 
     player = (calib_data["player"]["b"], calib_data["player"]["g"], calib_data["player"]["r"])
     robot = (calib_data["robot"]["b"], calib_data["robot"]["g"], calib_data["robot"]["r"])
 
-    for L in calib_data["coins"]:
-        tk = token_color(img, L["x"]), L["y"])
+    for index, L in enumerate(calib_data["coins"]):
+        tk = token_color(img, L["x"], L["y"])
 
+        row = int(index / 7)
+        column = index % 7
         if dist(tk, player) < color_tolerance:
-            state.append(2)
-        elif dist(tk, robot) < color_tolerance:
-            state.append(1)
-        else:
-            state.append(0)
+            state[column][row] = 1
+        if dist(tk, robot) < color_tolerance:
+            state[column][row] = 2
 
-    return getBoardState
+    return state
 
 def main():
     calib_data = (safe_load(open("coins.yaml", "r")))
 
-    arm = MyCobot("/dev/ttyUSB0", 1000000)
+    #arm = MyCobot("/dev/ttyUSB0", 1000000)
 
-    cam = cv2.VideoCapture(0)
-    if not cam.isOpened():
-        print("Cannot open camera")
-        exit()
+    #cam = cv2.VideoCapture(0)
+    #if not cam.isOpened():
+    #    print("Cannot open camera")
+    #    exit()
 
-    arm.sync_send_angles(home, move_speed)
-    ret, frame = cam.read()
-
+    #arm.sync_send_angles(home, move_speed)
+    #ret, frame = cam.read()
+    frame = cv2.imread("coins.jpg")
     state = getBoardState(frame, calib_data)
+    board = Board(state, True)
+    board.pretty_print()
+
+main()

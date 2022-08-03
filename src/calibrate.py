@@ -7,6 +7,7 @@ try:
 except ImportError:
     from yaml import Loader, Dumper
 
+c_radius = 20
 calib_data = {"coins":[]}
 
 img = cv2.imread("coins.jpg")
@@ -14,7 +15,7 @@ img_show = np.copy(img)
 
 def draw_circle(event,x,y,flags,param):
     if event == cv2.EVENT_LBUTTONDBLCLK:
-        cv2.circle(img_show,(x,y),40,(0,255,0),-1)
+        cv2.circle(img_show,(x,y),c_radius,(0,255,0),-1)
         calib_data["coins"].append({"x" : x,"y" : y})
 
 cv2.imshow("image", img_show)
@@ -29,7 +30,6 @@ while(1):
 robot_color_averages = []
 player_color_averages = []
 
-c_radius = 10
 for i, c in enumerate(calib_data["coins"]):
     crop = img[ c["y"] - c_radius : c["y"] + c_radius, c["x"] - c_radius : c["x"] + c_radius ]
     if (i % 2) == 0: # even # robot #
