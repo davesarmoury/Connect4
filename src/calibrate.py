@@ -37,14 +37,18 @@ for i, c in enumerate(calib_data["coins"]):
     else: # odd # player #
       player_color_averages.append(np.average(np.average(crop, axis=0), axis=0))
 
-player_color = np.average(player_color_averages, axis=0)
-robot_color = np.average(robot_color_averages, axis=0)
+player_color_max = np.ceil(np.amax(player_color_averages, axis=0))
+robot_color_max = np.ceil(np.amax(robot_color_averages, axis=0))
+player_color_min = np.floor(np.amin(player_color_averages, axis=0))
+robot_color_min = np.floor(np.amin(robot_color_averages, axis=0))
 
-print("player: " + str(player_color))
-print("robot: " + str(robot_color))
+calib_data["robot"] = {}
+calib_data["player"] = {}
 
-calib_data["robot"] = {"b": int(robot_color[0]),"g": int(robot_color[1]),"r": int(robot_color[2])}
-calib_data["player"] = {"b": int(player_color[0]),"g": int(player_color[1]),"r": int(player_color[2])}
+calib_data["robot"]["max"] = {"b": float(robot_color_max[0]),"g": float(robot_color_max[1]),"r": float(robot_color_max[2])}
+calib_data["player"]["max"] = {"b": float(player_color_max[0]),"g": float(player_color_max[1]),"r": float(player_color_max[2])}
+calib_data["robot"]["min"] = {"b": float(robot_color_min[0]),"g": float(robot_color_min[1]),"r": float(robot_color_min[2])}
+calib_data["player"]["min"] = {"b": float(player_color_min[0]),"g": float(player_color_min[1]),"r": float(player_color_min[2])}
 
 output = dump(calib_data, Dumper=Dumper)
 

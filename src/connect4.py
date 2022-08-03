@@ -10,8 +10,7 @@ import connect_four_ai as ai
 import time
 
 move_speed = 0.5
-color_range = 10
-coin_radius = 10
+coin_radius = 20
 color_tolerance = 40
 
 home = [0,0,0,0,0,0]
@@ -24,8 +23,10 @@ slots.append([0,0,0,0,0,0])
 slots.append([0,0,0,0,0,0])
 slots.append([0,0,0,0,0,0])
 
-def dist(c1, c2):
-    return math.sqrt((c1[0] - c2[0]) ** 2 + (c1[1] - c2[1]) ** 2 + (c1[2] - c2[2]) ** 2)
+def is_player(tk, color, color_tolerance):
+    if np.all(tk <= color["max"]) and np.all(tk >= color["min"]):
+        return True
+    return False
 
 def token_color(img, x, y):
     crop = img[ y - coin_radius : y + coin_radius, x - coin_radius : x + coin_radius ]
@@ -34,18 +35,24 @@ def token_color(img, x, y):
 def getBoardState(img, calib_data):
     state = np.zeros((6, 7))
     turn = 1
-    player = (calib_data["player"]["b"], calib_data["player"]["g"], calib_data["player"]["r"])
-    robot = (calib_data["robot"]["b"], calib_data["robot"]["g"], calib_data["robot"]["r"])
+
+    player_color = {}
+    player_color["max"] = (calib_data["player"]["max"]["b"], calib_data["player"]["max"]["g"], calib_data["player"]["max"]["r"])
+    player_color["min"] = (calib_data["player"]["min"]["b"], calib_data["player"]["min"]["g"], calib_data["player"]["min"]["r"])
+    robot_color = {}
+    robot_color["max"] = (calib_data["robot"]["max"]["b"], calib_data["robot"]["max"]["g"], calib_data["robot"]["max"]["r"])
+    robot_color["min"] = (calib_data["robot"]["min"]["b"], calib_data["robot"]["min"]["g"], calib_data["robot"]["min"]["r"])
 
     for index, L in enumerate(calib_data["coins"]):
         tk = token_color(img, L["x"], L["y"])
 
         row = int(index / 7)
         column = index % 7
-        if dist(tk, player) < color_tolerance:
+
+        if is_player(tk, player_color, color_tolerance):
             state[row][column] = 1
             turn = turn + 1
-        if dist(tk, robot) < color_tolerance:
+        if is_player(tk, robot_color, color_tolerance):
             state[row][column] = 2
             turn = turn + 1
 
