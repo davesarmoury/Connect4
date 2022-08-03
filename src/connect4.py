@@ -6,6 +6,8 @@ import numpy as np
 import sys
 sys.path.insert(0, 'Connect-Four-AI/Connect-Four')
 from connect_four import Board, Game
+import connect_four_ai as ai
+import time
 
 move_speed = 0.5
 color_range = 10
@@ -30,8 +32,8 @@ def token_color(img, x, y):
     return np.average(np.average(crop, axis=0), axis=0)
 
 def getBoardState(img, calib_data):
-    state = np.zeros((7, 6))
-
+    state = np.zeros((6, 7))
+    turn = 1
     player = (calib_data["player"]["b"], calib_data["player"]["g"], calib_data["player"]["r"])
     robot = (calib_data["robot"]["b"], calib_data["robot"]["g"], calib_data["robot"]["r"])
 
@@ -41,11 +43,13 @@ def getBoardState(img, calib_data):
         row = int(index / 7)
         column = index % 7
         if dist(tk, player) < color_tolerance:
-            state[column][row] = 1
+            state[row][column] = 1
+            turn = turn + 1
         if dist(tk, robot) < color_tolerance:
-            state[column][row] = 2
+            state[row][column] = 2
+            turn = turn + 1
 
-    return state
+    return state, turn
 
 def main():
     calib_data = (safe_load(open("coins.yaml", "r")))
@@ -60,8 +64,14 @@ def main():
     #arm.sync_send_angles(home, move_speed)
     #ret, frame = cam.read()
     frame = cv2.imread("coins.jpg")
-    state = getBoardState(frame, calib_data)
+    state, turn = getBoardState(frame, calib_data)
     board = Board(state, True)
+    game = Game()
+    game.turn = turn
     board.pretty_print()
+    start_time = time.time()
+    col = ai.minimax(game,board,5,True)
+    print(str(time.time() - start_time) + " seconds")
+    print(col)
 
 main()
