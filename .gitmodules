@@ -1,0 +1,3 @@
+[submodule "src/Connect-Four-AI"]
+	path = src/Connect-Four-AI
+	url = git@github.com:ravinapatel/Connect-Four-AI.git
