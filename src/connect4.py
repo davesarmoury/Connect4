@@ -12,7 +12,7 @@ from threading import Thread, Lock
 
 move_speed = 0.5
 coin_radius = 20
-color_tolerance = 20
+color_tolerance = 30
 
 home = [0,0,0,0,0,0]
 slots = []
@@ -33,9 +33,7 @@ def token_color(img, x, y):
     crop = img[ y - coin_radius : y + coin_radius, x - coin_radius : x + coin_radius ]
     return np.average(np.average(crop, axis=0), axis=0)
 
-def getBoardState(img, calib_data):
-    state = np.zeros((6, 7))
-
+def get_calib_colors(calib_data):
     p_max = np.array([calib_data["player"]["max"]["b"], calib_data["player"]["max"]["g"], calib_data["player"]["max"]["r"]])
     p_min = np.array([calib_data["player"]["min"]["b"], calib_data["player"]["min"]["g"], calib_data["player"]["min"]["r"]])
     r_max = np.array([calib_data["robot"]["max"]["b"], calib_data["robot"]["max"]["g"], calib_data["robot"]["max"]["r"]])
@@ -46,14 +44,21 @@ def getBoardState(img, calib_data):
     r_max = np.clip(r_max + color_tolerance, 0, 255)
     r_min = np.clip(r_min - color_tolerance, 0, 255)
 
-    turn = 1
-
     player_color = {}
-    player_color["max"] = (p_max[0], p_max[1], p_max[2])
-    player_color["min"] = (p_min[0], p_min[1], p_min[2])
+    player_color["max"] = [p_max[0], p_max[1], p_max[2]]
+    player_color["min"] = [p_min[0], p_min[1], p_min[2]]
     robot_color = {}
-    robot_color["max"] = (r_max[0], r_max[1], r_max[2])
-    robot_color["min"] = (r_min[0], r_min[1], r_min[2])
+    robot_color["max"] = [r_max[0], r_max[1], r_max[2]]
+    robot_color["min"] = [r_min[0], r_min[1], r_min[2]]
+
+    return robot_color, player_color
+
+def getBoardState(img, calib_data):
+    state = np.zeros((6, 7))
+
+    robot_color, player_color = get_calib_colors(calib_data)
+
+    turn = 1
 
     for index, L in enumerate(calib_data["coins"]):
         tk = token_color(img, L["x"], L["y"])
@@ -72,21 +77,46 @@ def getBoardState(img, calib_data):
 
 def cam_thread():
     global RUNNING, DO_MOVE, board_lock, board_state, turn_count, calib_data, cam
+
+    r_color, p_color = get_calib_colors(calib_data)
+    robot_color = [r_color["max"], r_color["min"]]
+    robot_color = np.mean(robot_color, axis=0)
+    player_color = [p_color["max"], p_color["min"]]
+    player_color = np.mean(player_color, axis=0)
+
     while True:
         ret, frame = cam.read()
-        cv2.imshow("board", frame)
-        key = cv2.waitKey(1)
-        if key & 0xFF == 27:
-             RUNNING = False
-             break
-        if key & 0xFF == 32:
-            DO_MOVE = True
 
         temp_board_state, temp_turn_count = getBoardState(frame, calib_data)
+
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        gray = cv2.cvtColor(gray, cv2.COLOR_GRAY2RGB)
+
+        for index, L in enumerate(calib_data["coins"]):
+            x = L["x"]
+            y = L["y"]
+
+            row = int(index / 7)
+            column = index % 7
+
+            if temp_board_state[row][column] == 1: # Player
+                cv2.circle(gray,(x,y),coin_radius*2,(player_color),-1)
+            if temp_board_state[row][column] == 2: # Robot
+                cv2.circle(gray,(x,y),coin_radius*2,(robot_color),-1)
+
+        cv2.imshow("board", gray)
+        key = cv2.waitKey(20)
+
         board_lock.acquire()
         board_state = temp_board_state
         turn_count = temp_turn_count
         board_lock.release()
+
+        if key & 0xFF == 27:
+            RUNNING = False
+            break
+        if key & 0xFF == 32:
+            DO_MOVE = True
 
     cv2.destroyAllWindows()
 
