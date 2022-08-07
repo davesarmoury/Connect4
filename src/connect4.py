@@ -13,16 +13,9 @@ from threading import Thread, Lock
 move_speed = 0.5
 coin_radius = 20
 color_tolerance = 30
+minmax_depth = 6
 
 home = [0,0,0,0,0,0]
-slots = []
-slots.append([0,0,0,0,0,0])
-slots.append([0,0,0,0,0,0])
-slots.append([0,0,0,0,0,0])
-slots.append([0,0,0,0,0,0])
-slots.append([0,0,0,0,0,0])
-slots.append([0,0,0,0,0,0])
-slots.append([0,0,0,0,0,0])
 
 def is_player(tk, color, color_tolerance):
     if np.all(tk <= color["max"]) and np.all(tk >= color["min"]):
@@ -105,7 +98,7 @@ def cam_thread():
                 cv2.circle(gray,(x,y),coin_radius*2,(robot_color),-1)
 
         cv2.imshow("board", gray)
-        key = cv2.waitKey(20)
+        key = cv2.waitKey(10)
 
         board_lock.acquire()
         board_state = temp_board_state
@@ -119,6 +112,12 @@ def cam_thread():
             DO_MOVE = True
 
     cv2.destroyAllWindows()
+
+def victory_dance():
+    pass
+
+def shame():
+    pass
 
 def main():
     global RUNNING, DO_MOVE, board_lock, board_state, turn_count, calib_data, cam
@@ -161,11 +160,19 @@ def main():
             game.turn = turn
 
             start_time = time.time()
-            col = ai.minimax(game,board,5,True)
+            (column, confidence) = ai.minimax(game,board,minmax_depth,True)
             print(str(time.time() - start_time) + " seconds")
-            print(col)
+            print(column)
+            print(confidence)
+
+            if column == None: # Game Over
+                if confidence > 0: # Win
+                    victory_dance()
+                else: # Lose
+                    shame()
+
             DO_MOVE = False
 
-        time.sleep(10)
+        time.sleep(0.1)
 
 main()
