@@ -8,6 +8,7 @@ sys.path.insert(0, 'Connect-Four-AI/Connect-Four')
 from connect_four import Board, Game
 import connect_four_ai as ai
 import time
+from threading import Thread, Lock
 
 move_speed = 0.5
 coin_radius = 20
@@ -69,7 +70,28 @@ def getBoardState(img, calib_data):
 
     return state, turn
 
+def cam_thread():
+    global RUNNING, DO_MOVE, board_lock, board_state, turn_count, calib_data, cam
+    while True:
+        ret, frame = cam.read()
+        cv2.imshow("board", frame)
+        key = cv2.waitKey(1)
+        if key & 0xFF == 27:
+             RUNNING = False
+             break
+        if key & 0xFF == 32:
+            DO_MOVE = True
+
+        temp_board_state, temp_turn_count = getBoardState(frame, calib_data)
+        board_lock.acquire()
+        board_state = temp_board_state
+        turn_count = temp_turn_count
+        board_lock.release()
+
+    cv2.destroyAllWindows()
+
 def main():
+    global RUNNING, DO_MOVE, board_lock, board_state, turn_count, calib_data, cam
     calib_data = (safe_load(open("coins.yaml", "r")))
 
     #arm = MyCobot("/dev/ttyUSB0", 1000000)
@@ -86,24 +108,34 @@ def main():
         print("Cannot open camera")
         exit()
 
+    board_lock = Lock()
+    thread = Thread(target=cam_thread, args=())
+    thread.daemon = True
+    RUNNING = True
+    DO_MOVE = False
+    thread.start()
+
     #arm.sync_send_angles(home, move_speed)
-    while True:
-        ret, frame = cam.read()
-        cv2.imshow("board", frame)
-        key = cv2.waitKey(10)
-        if key & 0xFF == 27:
-             break
-        if key & 0xFF == 32:
-        #frame = cv2.imread("coins.jpg")
-            state, turn = getBoardState(frame, calib_data)
+    while RUNNING:
+        if DO_MOVE:
+            print("Processing move")
+
+            board_lock.acquire()
+            state = board_state
+            turn = turn_count
+            board_lock.release()
+
             board = Board(state, True)
+            board.pretty_print()
             game = Game()
             game.turn = turn
-            board.pretty_print()
+
             start_time = time.time()
             col = ai.minimax(game,board,5,True)
             print(str(time.time() - start_time) + " seconds")
             print(col)
+            DO_MOVE = False
+
+        time.sleep(10)
 
 main()
-cv2.destroyAllWindows()
