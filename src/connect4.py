@@ -9,13 +9,75 @@ from connect_four import Board, Game
 import connect_four_ai as ai
 import time
 from threading import Thread, Lock
+from pymycobot.mycobot import MyCobot
+from pymycobot.genre import Coord
+from pymycobot import PI_PORT, PI_BAUD
+import RPi.GPIO as GPIO
 
-move_speed = 0.5
 coin_radius = 20
 color_tolerance = 30
 minmax_depth = 6
 
-home = [0,0,0,0,0,0]
+move_speed = 50
+approach_speed = 10
+
+slot_j_angles = []
+slot_j_angles.append([22.32, -49.57, -10.19, 13.97, 98.43, 59.76])
+slot_j_angles.append([15.64, -44.38, -0.52, 11.25, 102.39, 65.56])
+slot_j_angles.append([8.17, -40.51, 4.83, 9.22, 101.07, 73.3])
+slot_j_angles.append([0.7, -38.32, 7.47, 7.91, 102.21, 80.5])
+slot_j_angles.append([-10.54, -36.73, 11.6, -1.75, 102.12, 87.18])
+slot_j_angles.append([-20.03, -35.68, 11.6, -6.24, 99.84, 93.25])
+slot_j_angles.append([-28.03, -39.63, 5.62, -9.49, 100.63, 99.14])
+
+slot_pounce_angles = []
+slot_pounce_angles.append([22.32, -39.57, -10.19, 13.97, 98.43, 59.76])
+slot_pounce_angles.append([15.64, -34.38, -0.52, 11.25, 102.39, 65.56])
+slot_pounce_angles.append([8.17, -30.51, 4.83, 9.22, 101.07, 73.3])
+slot_pounce_angles.append([0.7, -28.32, 7.47, 7.91, 102.21, 80.5])
+slot_pounce_angles.append([-10.54, -26.73, 11.6, -1.75, 102.12, 87.18])
+slot_pounce_angles.append([-20.03, -25.68, 11.6, -6.24, 99.84, 93.25])
+slot_pounce_angles.append([-28.03, -29.63, 5.62, -9.49, 100.63, 99.14])
+
+home_angles = [-10, 30, -20, 0, -70, 90]
+
+LOAD_DC = 10.5
+RELEASE_DC = 7.4
+MID_DC = (LOAD_DC + RELEASE_DC ) / 2.0
+
+GPIO.setwarnings(False)
+GPIO.setmode(GPIO.BCM)
+SERVO_PIN = 18
+
+GPIO.setup(SERVO_PIN, GPIO.OUT)
+servo = GPIO.PWM(SERVO_PIN, 50)
+
+servo.start(0)
+
+mc = MyCobot(PI_PORT, PI_BAUD)
+
+def loadChip():
+  servo.ChangeDutyCycle(LOAD_DC)
+  time.sleep(1.0)
+  servo.ChangeDutyCycle(MID_DC)
+  time.sleep(0.5)
+
+def dispenseChip():
+  servo.ChangeDutyCycle(RELEASE_DC)
+  time.sleep(1.0)
+
+def drop_chip(idx):
+    slot = slot_j_angles[idx]
+    slot_pounce = slot_pounce_angles[idx]
+
+    mc.sync_send_angles(home_angles, move_speed)
+    loadChip()
+    mc.sync_send_angles(slot_pounce, move_speed)
+    mc.sync_send_angles(slot, approach_speed)
+    time.sleep(1)
+    dispenseChip()
+    mc.sync_send_angles(slot_pounce, approach_speed)
+    mc.sync_send_angles(home_angles, move_speed)
 
 def is_player(tk, color, color_tolerance):
     if np.all(tk <= color["max"]) and np.all(tk >= color["min"]):
@@ -164,6 +226,8 @@ def main():
             print(str(time.time() - start_time) + " seconds")
             print(column)
             print(confidence)
+
+            drop_chip(column)
 
             if column == None: # Game Over
                 if confidence > 0: # Win
