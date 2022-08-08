@@ -16,7 +16,7 @@ import RPi.GPIO as GPIO
 
 coin_radius = 20
 color_tolerance = 30
-minmax_depth = 6
+minmax_depth = 4
 
 move_speed = 50
 approach_speed = 10
@@ -57,14 +57,14 @@ servo.start(0)
 mc = MyCobot(PI_PORT, PI_BAUD)
 
 def loadChip():
-  servo.ChangeDutyCycle(LOAD_DC)
-  time.sleep(1.0)
-  servo.ChangeDutyCycle(MID_DC)
-  time.sleep(0.5)
+    servo.ChangeDutyCycle(LOAD_DC)
+    time.sleep(1.0)
+    servo.ChangeDutyCycle(MID_DC)
+    time.sleep(0.5)
 
 def dispenseChip():
-  servo.ChangeDutyCycle(RELEASE_DC)
-  time.sleep(1.0)
+    servo.ChangeDutyCycle(RELEASE_DC)
+    time.sleep(1.0)
 
 def drop_chip(idx):
     slot = slot_j_angles[idx]
@@ -159,6 +159,7 @@ def cam_thread():
             if temp_board_state[row][column] == 2: # Robot
                 cv2.circle(gray,(x,y),coin_radius*2,(robot_color),-1)
 
+        gray = cv2.resize(gray, (1280, 720))
         cv2.imshow("board", gray)
         key = cv2.waitKey(10)
 
@@ -176,10 +177,24 @@ def cam_thread():
     cv2.destroyAllWindows()
 
 def victory_dance():
-    pass
+    mc.sync_send_angles(home_angles, move_speed)
+    mc.sync_send_angles([0, 10.01, -29.17, 0, -57.04, 90], move_speed)
+    mc.sync_send_angles([-30, 10.01, -29.17, -30, -57.04, 120], move_speed)
+    mc.sync_send_angles([30, 10.01, -29.17, 30, -57.04, 60], move_speed)
+    mc.sync_send_angles([-30, 10.01, -29.17, -30, -57.04, 120], move_speed)
+    mc.sync_send_angles([30, 10.01, -29.17, 30, -57.04, 60], move_speed)
+    mc.sync_send_angles([0, 10.01, -29.17, 0, -57.04, 90], move_speed)
+    mc.sync_send_angles(home_angles, move_speed)
 
 def shame():
-    pass
+    mc.sync_send_angles(home_angles, move_speed)
+    mc.sync_send_angles([-10.01, -10.98, 33.83, 0, -47.19, 102.83], move_speed)
+    mc.sync_send_angles([-10.01, -10.98, 33.83, 30, -47.19, 102.83], move_speed)
+    mc.sync_send_angles([-10.01, -10.98, 33.83, -30, -47.19, 102.83], move_speed)
+    mc.sync_send_angles([-10.01, -10.98, 33.83, 30, -47.19, 102.83], move_speed)
+    mc.sync_send_angles([-10.01, -10.98, 33.83, -30, -47.19, 102.83], move_speed)
+    mc.sync_send_angles([-10.01, -10.98, 33.83, 0, -47.19, 102.83], move_speed)
+    mc.sync_send_angles(home_angles, move_speed)
 
 def main():
     global RUNNING, DO_MOVE, board_lock, board_state, turn_count, calib_data, cam
@@ -191,9 +206,9 @@ def main():
 
     cam.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
     cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
-    cam.set(cv2.CAP_PROP_AUTOFOCUS, False)
+    cam.set(cv2.CAP_PROP_AUTOFOCUS, 0)
     cam.set(cv2.CAP_PROP_FOCUS, 0)
-    cam.set(cv2.CAP_PROP_AUTO_WB, True)
+    cam.set(cv2.CAP_PROP_AUTO_WB, 1)
 
     if not cam.isOpened():
         print("Cannot open camera")
@@ -227,13 +242,14 @@ def main():
             print(column)
             print(confidence)
 
-            drop_chip(column)
-
             if column == None: # Game Over
                 if confidence > 0: # Win
                     victory_dance()
                 else: # Lose
                     shame()
+
+            else:
+              drop_chip(column)
 
             DO_MOVE = False
 
